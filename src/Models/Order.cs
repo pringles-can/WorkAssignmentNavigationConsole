@@ -1,6 +1,6 @@
-﻿using Server.Models.Enums;
+﻿using WorkAssignmentNavigationConsole.Models.Enums;
 
-namespace Server.Models;
+namespace WorkAssignmentNavigationConsole.Models;
 
 // todo: Rename to WorkOrder(?)
 

@@ -1,5 +1,5 @@
-﻿using Server.Models.Enums;
+﻿using WorkAssignmentNavigationConsole.Models.Enums;
 
-namespace Server.Models.Records;
+namespace WorkAssignmentNavigationConsole.Models.Records;
 
 public record OrderStatusChanged(Guid OrderId, OrderStage Stage, DateTimeOffset AtUtc);

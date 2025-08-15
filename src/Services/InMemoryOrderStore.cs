@@ -1,9 +1,9 @@
 ﻿using System.Collections.Concurrent;
-using Server.Models;
-using Server.Models.Enums;
-using Server.Services.Interfaces;
+using WorkAssignmentNavigationConsole.Models;
+using WorkAssignmentNavigationConsole.Models.Enums;
+using WorkAssignmentNavigationConsole.Services.Interfaces;
 
-namespace Server.Services;
+namespace WorkAssignmentNavigationConsole.Services;
 
 public class InMemoryOrderStore : IOrderStore
 {

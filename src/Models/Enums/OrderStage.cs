@@ -1,4 +1,4 @@
-﻿namespace Server.Models.Enums;
+﻿namespace WorkAssignmentNavigationConsole.Models.Enums;
 
 public enum OrderStage
 {

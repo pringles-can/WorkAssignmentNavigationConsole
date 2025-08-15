@@ -1,7 +1,7 @@
-﻿using Server.Models;
-using Server.Models.Enums;
+﻿using WorkAssignmentNavigationConsole.Models;
+using WorkAssignmentNavigationConsole.Models.Enums;
 
-namespace Server.Services.Interfaces;
+namespace WorkAssignmentNavigationConsole.Services.Interfaces;
 
 public interface IOrderStore
 {
