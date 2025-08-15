@@ -1,0 +1,14 @@
+# Visual Studio / Rider / .NET
+bin/
+obj/
+out/
+*.user
+*.suo
+.vscode/
+.idea/
+*.DotSettings.user
+# OS
+.DS_Store
+Thumbs.db
+# Logs
+*.log
