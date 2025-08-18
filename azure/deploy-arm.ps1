@@ -28,7 +28,7 @@ param(
     [switch]$SkipContainerRegistry
 )
 
-Write-Host "🍕 Deploying WANC Tracker using ARM Template..." -ForegroundColor Green
+Write-Host "Deploying WANC Tracker using ARM Template..." -ForegroundColor Green
 
 # Check if Azure CLI is installed
 if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
@@ -74,7 +74,7 @@ az deployment group create `
     --name $deploymentName
 
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "`n🍕 ARM Template Deployment Successful!" -ForegroundColor Green
+    Write-Host "`nARM Template Deployment Successful!" -ForegroundColor Green
     
     # Get deployment outputs
     $outputs = az deployment group show --resource-group $ResourceGroupName --name $deploymentName --query properties.outputs | ConvertFrom-Json

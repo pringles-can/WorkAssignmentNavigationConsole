@@ -25,43 +25,43 @@ A real-time order tracking application built with ASP.NET Core, SignalR, and Red
 source docker-helper.sh
 
 # Start the application
-pizza_start
+wanc_start
 
 # Open in browser
-pizza_open
+wanc_open
 
 # Check status
-pizza_status
+wanc_status
 
 # View logs
-pizza_logs
+wanc_logs
 
 # Create test order
-pizza_test
+wanc_test
 
 # Stop the application
-pizza_stop
+wanc_stop
 ```
 
 #### For Windows Command Prompt:
 ```cmd
 # Start the application
-pizza-docker.bat start
+wanc-docker.bat start
 
 # Open in browser
-pizza-docker.bat open
+wanc-docker.bat open
 
 # Check status
-pizza-docker.bat status
+wanc-docker.bat status
 
 # View logs
-pizza-docker.bat logs
+wanc-docker.bat logs
 
 # Create test order
-pizza-docker.bat test
+wanc-docker.bat test
 
 # Stop the application
-pizza-docker.bat stop
+wanc-docker.bat stop
 ```
 
 ### Option 2: Manual Docker Commands
@@ -158,13 +158,13 @@ For production deployment to Azure, see the comprehensive guide in [`azure/READM
 1. **Automated Deployment (Recommended):**
    ```powershell
    cd azure
-   .\azure-deploy.ps1 -ResourceGroupName "pizza-tracker-prod" -Environment "prod"
+   .\azure-deploy.ps1 -ResourceGroupName "wanc-tracker-prod" -Environment "prod"
    ```
 
 2. **Using ARM Template:**
    ```powershell
    cd azure
-   .\deploy-arm.ps1 -ResourceGroupName "pizza-tracker-prod" -Environment "prod"
+   .\deploy-arm.ps1 -ResourceGroupName "wanc-tracker-prod" -Environment "prod"
    ```
 
 3. **Manual Setup:**

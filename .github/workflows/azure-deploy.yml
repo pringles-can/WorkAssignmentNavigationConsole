@@ -191,7 +191,7 @@ jobs:
           
     - name: Deployment Summary
       run: |
-        echo "🍕 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+        echo "Deployment Summary" >> $GITHUB_STEP_SUMMARY
         echo "**Environment:** ${{ github.event.inputs.environment || 'dev' }}" >> $GITHUB_STEP_SUMMARY
         echo "**App Service:** ${{ steps.appservice.outputs.app_service_name }}" >> $GITHUB_STEP_SUMMARY
         echo "**URL:** ${{ steps.appurl.outputs.app_url }}" >> $GITHUB_STEP_SUMMARY

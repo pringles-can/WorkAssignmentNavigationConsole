@@ -21,7 +21,7 @@ param(
 # Set error action preference
 $ErrorActionPreference = "Stop"
 
-Write-Host "🍕 Deploying Work Assignment Navigation Tracker Azure Resources..." -ForegroundColor Green
+Write-Host "Deploying Work Assignment Navigation Tracker Azure Resources..." -ForegroundColor Green
 Write-Host "Resource Group: $ResourceGroupName" -ForegroundColor Yellow
 Write-Host "Location: $Location" -ForegroundColor Yellow
 Write-Host "Environment: $Environment" -ForegroundColor Yellow
@@ -32,7 +32,7 @@ $uniqueSuffix = "$Environment-$timestamp"
 $redisName = "wanc-redis-$uniqueSuffix"
 $appServiceName = "wanc-app-$uniqueSuffix"
 $appServicePlanName = "wanc-plan-$uniqueSuffix"
-$containerRegistryName = "wancregistry$($uniqueSuffix -replace '-', '')"
+$containerRegistryName = "wancregistry" + ($uniqueSuffix -replace '-', '')
 $signalRName = "wanc-signalr-$uniqueSuffix"
 $keyVaultName = "wanc-kv-$uniqueSuffix"
 
@@ -47,6 +47,32 @@ $account = az account show 2>$null | ConvertFrom-Json
 if (-not $account) {
     Write-Host "Please log in to Azure..." -ForegroundColor Yellow
     az login
+}
+
+# Check if required resource providers are registered
+Write-Host "Checking resource provider registrations..." -ForegroundColor Cyan
+$requiredProviders = @("Microsoft.KeyVault", "Microsoft.Web", "Microsoft.Cache", "Microsoft.SignalRService", "Microsoft.ContainerRegistry")
+$missingProviders = @()
+
+foreach ($provider in $requiredProviders) {
+    $registrationState = az provider show --namespace $provider --query registrationState --output tsv 2>$null
+    if ($registrationState -ne "Registered") {
+        $missingProviders += $provider
+        Write-Host "  WARNING: $provider is not registered (Status: $registrationState)" -ForegroundColor Yellow
+    } else {
+        Write-Host "  OK: $provider is registered" -ForegroundColor Green
+    }
+}
+
+if ($missingProviders.Count -gt 0) {
+    Write-Host "`nERROR: Some required resource providers are not registered!" -ForegroundColor Red
+    Write-Host "Please run the provider registration script first:" -ForegroundColor Yellow
+    Write-Host "  .\register-providers.ps1" -ForegroundColor Cyan
+    Write-Host "Or register them manually using:" -ForegroundColor Yellow
+    foreach ($provider in $missingProviders) {
+        Write-Host "  az provider register --namespace $provider" -ForegroundColor Cyan
+    }
+    exit 1
 }
 
 # Create Resource Group
@@ -88,7 +114,7 @@ az redis create --name $redisName --resource-group $ResourceGroupName --location
 $redisKeys = az redis list-keys --name $redisName --resource-group $ResourceGroupName | ConvertFrom-Json
 $redisHost = az redis show --name $redisName --resource-group $ResourceGroupName --query hostName --output tsv
 $redisPort = az redis show --name $redisName --resource-group $ResourceGroupName --query port --output tsv
-$redisConnectionString = "$redisHost:$redisPort,password=$($redisKeys.primaryKey),ssl=True,abortConnect=False"
+$redisConnectionString = "$redisHost`:$redisPort,password=$($redisKeys.primaryKey),ssl=True,abortConnect=False"
 
 # Store Redis connection string in Key Vault
 az keyvault secret set --vault-name $keyVaultName --name "RedisConnectionString" --value $redisConnectionString
@@ -159,7 +185,7 @@ $identityPrincipalId = az webapp identity show --name $appServiceName --resource
 az keyvault set-policy --name $keyVaultName --object-id $identityPrincipalId --secret-permissions get list
 
 # Output deployment summary
-Write-Host "`n🍕 Azure Resources Deployment Complete!" -ForegroundColor Green
+Write-Host "`nAzure Resources Deployment Complete!" -ForegroundColor Green
 Write-Host "`nDeployed Resources:" -ForegroundColor Yellow
 Write-Host "  Resource Group: $ResourceGroupName"
 Write-Host "  Key Vault: $keyVaultName"
