@@ -1,0 +1,198 @@
+name: Deploy to Azure
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+        - dev
+        - staging
+        - prod
+
+env:
+  AZURE_WEBAPP_NAME: wanc-tracker-${{ github.event.inputs.environment || 'dev' }}
+  AZURE_RESOURCE_GROUP: wanc-tracker-rg-${{ github.event.inputs.environment || 'dev' }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+        
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Login to Azure
+      uses: azure/login@v2
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        
+    - name: Set environment variables
+      run: |
+        echo "ENVIRONMENT=${{ github.event.inputs.environment || 'dev' }}" >> $GITHUB_ENV
+        echo "RESOURCE_GROUP=wanc-tracker-rg-${{ github.event.inputs.environment || 'dev' }}" >> $GITHUB_ENV
+        
+    - name: Deploy Azure Infrastructure (if needed)
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+        # Check if resource group exists
+        if ! az group show --name $RESOURCE_GROUP --output none 2>/dev/null; then
+          echo "Creating Azure infrastructure..."
+          # Deploy ARM template
+          az deployment group create \
+            --resource-group $RESOURCE_GROUP \
+            --template-file azure/azuredeploy.json \
+            --parameters environment=$ENVIRONMENT \
+            --parameters resourceGroupName=$RESOURCE_GROUP \
+            --parameters location="East US"
+        else
+          echo "Resource group already exists, skipping infrastructure deployment"
+        fi
+        
+    - name: Get Azure Container Registry info
+      id: acr
+      run: |
+        ACR_NAME=$(az deployment group show \
+          --resource-group $RESOURCE_GROUP \
+          --name "wanc-tracker-deployment-*" \
+          --query "properties.outputs.containerRegistryName.value" \
+          --output tsv 2>/dev/null || echo "")
+        
+        if [ -n "$ACR_NAME" ]; then
+          echo "acr_name=$ACR_NAME" >> $GITHUB_OUTPUT
+          echo "acr_login_server=$(az acr show --name $ACR_NAME --query loginServer --output tsv)" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Login to Azure Container Registry
+      if: steps.acr.outputs.acr_name != ''
+      uses: azure/docker-login@v1
+      with:
+        login-server: ${{ steps.acr.outputs.acr_login_server }}
+        username: ${{ secrets.REGISTRY_USERNAME }}
+        password: ${{ secrets.REGISTRY_PASSWORD }}
+        
+    - name: Build and push Docker image
+      if: steps.acr.outputs.acr_name != ''
+      run: |
+        docker build -t ${{ steps.acr.outputs.acr_login_server }}/wanc-tracker:${{ github.sha }} .
+        docker build -t ${{ steps.acr.outputs.acr_login_server }}/wanc-tracker:latest .
+        docker push ${{ steps.acr.outputs.acr_login_server }}/wanc-tracker:${{ github.sha }}
+        docker push ${{ steps.acr.outputs.acr_login_server }}/wanc-tracker:latest
+        
+    - name: Get App Service name
+      id: appservice
+      run: |
+        APP_SERVICE_NAME=$(az deployment group show \
+          --resource-group $RESOURCE_GROUP \
+          --name "wanc-tracker-deployment-*" \
+          --query "properties.outputs.appServiceName.value" \
+          --output tsv 2>/dev/null || echo "wanc-app-$ENVIRONMENT")
+        echo "app_service_name=$APP_SERVICE_NAME" >> $GITHUB_OUTPUT
+        
+    - name: Deploy to Azure App Service
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: ${{ steps.appservice.outputs.app_service_name }}
+        images: ${{ steps.acr.outputs.acr_login_server }}/wanc-tracker:${{ github.sha }}
+        
+    - name: Configure App Service settings
+      run: |
+        # Get Redis connection string
+        REDIS_NAME=$(az deployment group show \
+          --resource-group $RESOURCE_GROUP \
+          --name "wanc-tracker-deployment-*" \
+          --query "properties.outputs.redisCacheName.value" \
+          --output tsv 2>/dev/null || echo "")
+          
+        if [ -n "$REDIS_NAME" ]; then
+          REDIS_KEYS=$(az redis list-keys --name $REDIS_NAME --resource-group $RESOURCE_GROUP)
+          REDIS_HOST=$(az redis show --name $REDIS_NAME --resource-group $RESOURCE_GROUP --query hostName --output tsv)
+          REDIS_PORT=$(az redis show --name $REDIS_NAME --resource-group $RESOURCE_GROUP --query port --output tsv)
+          REDIS_PASSWORD=$(echo $REDIS_KEYS | jq -r '.primaryKey')
+          REDIS_CONNECTION_STRING="$REDIS_HOST:$REDIS_PORT,password=$REDIS_PASSWORD,ssl=True,abortConnect=False"
+          
+          # Set Redis connection string
+          az webapp config appsettings set \
+            --name ${{ steps.appservice.outputs.app_service_name }} \
+            --resource-group $RESOURCE_GROUP \
+            --settings "Redis:ConnectionString=$REDIS_CONNECTION_STRING"
+        fi
+        
+        # Get SignalR connection string
+        SIGNALR_NAME=$(az deployment group show \
+          --resource-group $RESOURCE_GROUP \
+          --name "wanc-tracker-deployment-*" \
+          --query "properties.outputs.signalRName.value" \
+          --output tsv 2>/dev/null || echo "")
+          
+        if [ -n "$SIGNALR_NAME" ]; then
+          SIGNALR_KEYS=$(az signalr key list --name $SIGNALR_NAME --resource-group $RESOURCE_GROUP)
+          SIGNALR_HOST=$(az signalr show --name $SIGNALR_NAME --resource-group $RESOURCE_GROUP --query hostName --output tsv)
+          SIGNALR_PASSWORD=$(echo $SIGNALR_KEYS | jq -r '.primaryKey')
+          SIGNALR_CONNECTION_STRING="Endpoint=https://$SIGNALR_HOST;AccessKey=$SIGNALR_PASSWORD;Version=1.0;"
+          
+          # Set SignalR connection string
+          az webapp config appsettings set \
+            --name ${{ steps.appservice.outputs.app_service_name }} \
+            --resource-group $RESOURCE_GROUP \
+            --settings "Azure:SignalR:ConnectionString=$SIGNALR_CONNECTION_STRING"
+        fi
+        
+    - name: Restart App Service
+      run: |
+        az webapp restart --name ${{ steps.appservice.outputs.app_service_name }} --resource-group $RESOURCE_GROUP
+        
+    - name: Get App Service URL
+      id: appurl
+      run: |
+        APP_URL=$(az webapp show --name ${{ steps.appservice.outputs.app_service_name }} --resource-group $RESOURCE_GROUP --query defaultHostName --output tsv)
+        echo "app_url=https://$APP_URL" >> $GITHUB_OUTPUT
+        
+    - name: Run smoke test
+      run: |
+        # Wait for app to be ready
+        sleep 30
+        
+        # Test if app is responding
+        curl -f ${{ steps.appurl.outputs.app_url }}/health || exit 1
+        
+    - name: Comment on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: `🚀 **Deployment Successful!**
+          
+          **Environment:** ${{ github.event.inputs.environment || 'dev' }}
+          **App Service:** ${{ steps.appservice.outputs.app_service_name }}
+          **URL:** ${{ steps.appurl.outputs.app_url }}
+          
+          Your changes have been deployed successfully!`
+          })
+          
+    - name: Deployment Summary
+      run: |
+        echo "🍕 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+        echo "**Environment:** ${{ github.event.inputs.environment || 'dev' }}" >> $GITHUB_STEP_SUMMARY
+        echo "**App Service:** ${{ steps.appservice.outputs.app_service_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "**URL:** ${{ steps.appurl.outputs.app_url }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Docker Image:** ${{ steps.acr.outputs.acr_login_server }}/wanc-tracker:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY

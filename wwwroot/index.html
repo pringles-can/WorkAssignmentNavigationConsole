@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Work Order Tracker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.0/signalr.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .order-card {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background: #fafafa;
+        }
+        .stage {
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .stage-initial { background: #e3f2fd; color: #1976d2; }
+        .stage-inprogress { background: #fff3e0; color: #f57c00; }
+        .stage-completed { background: #e8f5e8; color: #388e3c; }
+        .stage-closed { background: #f3e5f5; color: #7b1fa2; }
+        .stage-cancelled { background: #ffebee; color: #d32f2f; }
+        button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1976d2;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .order-id {
+            font-family: monospace;
+            font-size: 14px;
+            color: #666;
+        }
+        .timestamp {
+            font-size: 12px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍕 Work Order Tracker</h1>
+        
+        <div>
+            <button onclick="createOrder()">Create New Order</button>
+            <input type="text" id="orderIdInput" placeholder="Enter Order ID to track" style="padding: 10px; margin: 5px;">
+            <button onclick="trackOrder()">Track Order</button>
+        </div>
+
+        <div id="orders"></div>
+    </div>
+
+    <script>
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/orderhub")
+            .build();
+
+        let currentOrderId = null;
+
+        connection.on("OrderCreated", (order) => {
+            console.log("Order created:", order);
+            displayOrder(order);
+        });
+
+        connection.on("OrderStatusChanged", (statusChange) => {
+            console.log("Order status changed:", statusChange);
+            updateOrderStatus(statusChange);
+        });
+
+        connection.start()
+            .then(() => console.log("SignalR Connected"))
+            .catch(err => console.error("SignalR Connection Error:", err));
+
+        async function createOrder() {
+            try {
+                const response = await fetch('/api/orders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const order = await response.json();
+                    currentOrderId = order.id;
+                    await connection.invoke("JoinOrder", order.id);
+                    displayOrder(order);
+                }
+            } catch (error) {
+                console.error("Error creating order:", error);
+            }
+        }
+
+        async function trackOrder() {
+            const orderId = document.getElementById('orderIdInput').value;
+            if (!orderId) return;
+
+            try {
+                const response = await fetch(`/api/orders/${orderId}`);
+                if (response.ok) {
+                    const order = await response.json();
+                    currentOrderId = order.id;
+                    await connection.invoke("JoinOrder", order.id);
+                    displayOrder(order);
+                } else {
+                    alert('Order not found');
+                }
+            } catch (error) {
+                console.error("Error tracking order:", error);
+            }
+        }
+
+        async function advanceStage(orderId) {
+            try {
+                const response = await fetch(`/api/orders/${orderId}/advance`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    const order = await response.json();
+                    updateOrderStatus({
+                        orderId: order.id,
+                        stage: order.stage,
+                        updatedAtUtc: order.updatedAtUtc
+                    });
+                }
+            } catch (error) {
+                console.error("Error advancing stage:", error);
+            }
+        }
+
+        function displayOrder(order) {
+            const ordersDiv = document.getElementById('orders');
+            const orderElement = document.createElement('div');
+            orderElement.className = 'order-card';
+            orderElement.id = `order-${order.id}`;
+            
+            orderElement.innerHTML = `
+                <h3>Order #${order.id.substring(0, 8)}</h3>
+                <div class="order-id">${order.id}</div>
+                <div class="stage stage-${order.stage.toLowerCase()}">${order.stage}</div>
+                <div class="timestamp">Created: ${new Date(order.createdAtUtc).toLocaleString()}</div>
+                <div class="timestamp">Updated: ${new Date(order.updatedAtUtc).toLocaleString()}</div>
+                <button onclick="advanceStage('${order.id}')" ${order.stage === 'Closed' ? 'disabled' : ''}>
+                    ${order.stage === 'Closed' ? 'Order Complete' : 'Advance Stage'}
+                </button>
+            `;
+            
+            ordersDiv.appendChild(orderElement);
+        }
+
+        function updateOrderStatus(statusChange) {
+            const orderElement = document.getElementById(`order-${statusChange.orderId}`);
+            if (orderElement) {
+                const stageElement = orderElement.querySelector('.stage');
+                const timestampElement = orderElement.querySelector('.timestamp:last-child');
+                const buttonElement = orderElement.querySelector('button');
+                
+                stageElement.className = `stage stage-${statusChange.stage.toLowerCase()}`;
+                stageElement.textContent = statusChange.stage;
+                timestampElement.textContent = `Updated: ${new Date(statusChange.updatedAtUtc).toLocaleString()}`;
+                
+                if (statusChange.stage === 'Closed') {
+                    buttonElement.disabled = true;
+                    buttonElement.textContent = 'Order Complete';
+                }
+            }
+        }
+    </script>
+</body>
+</html>

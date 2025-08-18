@@ -3,14 +3,13 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copy csproj and restore as distinct layers
-COPY src/WebApp/WebApp.csproj src/WebApp/
-RUN dotnet restore src/WebApp/WebApp.csproj
+COPY WorkAssignmentNavigationConsole.csproj ./
+RUN dotnet restore WorkAssignmentNavigationConsole.csproj
 
 # Copy the rest of the source
 COPY . .
 
 # Publish
-WORKDIR /src/src/WebApp
 RUN dotnet publish -c Release -o /app/publish /p:UseAppHost=false
 
 # Runtime stage
@@ -24,4 +23,4 @@ EXPOSE 8080
 # ENV Redis__ConnectionString=localhost:6379
 
 COPY --from=build /app/publish .
-ENTRYPOINT ["dotnet", "WebApp.dll"]
+ENTRYPOINT ["dotnet", "WorkAssignmentNavigationConsole.dll"]
