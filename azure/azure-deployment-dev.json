@@ -1,0 +1,11 @@
+﻿{
+    "DeploymentTime":  "2025-08-20 12:00:32",
+    "KeyVaultName":  "wanc-kv-dev08201125",
+    "RedisName":  "wanc-redis-dev-20250820-112507",
+    "Environment":  "dev",
+    "ContainerRegistryName":  "wancregistrydev20250820112507",
+    "ResourceGroupName":  "wanc-tracker-dev",
+    "SignalRName":  "wanc-signalr-dev-20250820-112507",
+    "Location":  "East US",
+    "AppServiceName":  "wanc-app-dev-20250820-112507"
+}

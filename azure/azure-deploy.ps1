@@ -11,7 +11,7 @@ param(
     [Parameter(Mandatory=$true)]
     [string]$Environment = "dev", # dev, staging, prod
     
-    [string]$AppServicePlanSku = "B1",
+    [string]$AppServicePlanSku = "F1",
     
     [switch]$SkipContainerRegistry,
     
@@ -29,12 +29,13 @@ Write-Host "Environment: $Environment" -ForegroundColor Yellow
 # Generate unique names
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $uniqueSuffix = "$Environment-$timestamp"
+$shortSuffix = "$Environment" + (Get-Date -Format "MMddHHmm")
 $redisName = "wanc-redis-$uniqueSuffix"
 $appServiceName = "wanc-app-$uniqueSuffix"
 $appServicePlanName = "wanc-plan-$uniqueSuffix"
 $containerRegistryName = "wancregistry" + ($uniqueSuffix -replace '-', '')
 $signalRName = "wanc-signalr-$uniqueSuffix"
-$keyVaultName = "wanc-kv-$uniqueSuffix"
+$keyVaultName = "wanc-kv-$shortSuffix"
 
 # Check if Azure CLI is installed
 if (-not (Get-Command az -ErrorAction SilentlyContinue)) {

@@ -65,7 +65,7 @@ $parametersJson = $parameters | ConvertTo-Json -Depth 3
 
 # Deploy ARM template
 Write-Host "Deploying ARM template..." -ForegroundColor Cyan
-$deploymentName = "wanc-tracker-deployment-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+$deploymentName = "wanc-deploy-$(Get-Date -Format 'MMdd-HHmm')"
 
 az deployment group create `
     --resource-group $ResourceGroupName `
