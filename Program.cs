@@ -33,7 +33,7 @@ if (!string.IsNullOrEmpty(signalRConnectionString))
 builder.Services.AddScoped<IOrderStore, RedisOrderStore>();
 builder.Services.AddScoped<OrderService>();
 
-// Add CORS for development
+// Add CORS - moved outside the development check
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -51,15 +51,20 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-    app.UseCors();
 }
+
+// Enable CORS for all environments (needed for SignalR)
+app.UseCors();
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 
+// Map API controllers BEFORE the fallback
 app.MapControllers();
 app.MapHub<OrderHub>("/orderhub");
+
+// Map fallback to file LAST - this catches everything that wasn't handled above
 app.MapFallbackToFile("index.html");
 
 app.Run();
