@@ -18,6 +18,7 @@ builder.Services.AddStackExchangeRedisCache(options =>
 {
     var redisConnectionString = builder.Configuration.GetConnectionString("Redis") 
         ?? builder.Configuration["Redis:ConnectionString"] 
+        ?? builder.Configuration["RedisConnectionString"]  // Alternative name without colon
         ?? "localhost:6379";
     
     // For Azure Redis Cache, ensure proper connection settings

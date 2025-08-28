@@ -7,5 +7,5 @@
     "ResourceGroupName":  "wanc-tracker-dev",
     "SignalRName":  "wanc-signalr-dev-20250820-112507",
     "Location":  "East US",
-    "AppServiceName":  "wanc-app-dev-20250820-112507"
+    "AppServiceName":  "WorkAssignmentNavigationConsole"
 }
