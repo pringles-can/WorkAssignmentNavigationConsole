@@ -16,9 +16,39 @@ builder.Services.AddSignalR();
 // Configure Redis
 builder.Services.AddStackExchangeRedisCache(options =>
 {
-    options.Configuration = builder.Configuration.GetConnectionString("Redis") 
+    var redisConnectionString = builder.Configuration.GetConnectionString("Redis") 
         ?? builder.Configuration["Redis:ConnectionString"] 
         ?? "localhost:6379";
+    
+    // For Azure Redis Cache, ensure proper connection settings
+    if (redisConnectionString.Contains("ssl=True") || redisConnectionString.Contains("ssl=true"))
+    {
+        // Add additional parameters for Azure Redis Cache reliability
+        if (!redisConnectionString.Contains("abortConnect=False"))
+        {
+            redisConnectionString += ",abortConnect=False";
+        }
+        if (!redisConnectionString.Contains("connectTimeout="))
+        {
+            redisConnectionString += ",connectTimeout=10000";
+        }
+        if (!redisConnectionString.Contains("syncTimeout="))
+        {
+            redisConnectionString += ",syncTimeout=10000";
+        }
+    }
+    
+    // Log Redis connection string (without password for security)
+    var loggableConnectionString = redisConnectionString;
+    if (loggableConnectionString.Contains("password="))
+    {
+        var parts = loggableConnectionString.Split(',');
+        var filteredParts = parts.Where(p => !p.Trim().StartsWith("password="));
+        loggableConnectionString = string.Join(",", filteredParts);
+    }
+    Console.WriteLine($"Redis Connection String: {loggableConnectionString}");
+    
+    options.Configuration = redisConnectionString;
 });
 
 // Configure Azure SignalR (optional - for production)
@@ -30,8 +60,14 @@ if (!string.IsNullOrEmpty(signalRConnectionString))
 }
 
 // Register services
-builder.Services.AddScoped<IOrderStore, RedisOrderStore>();
+builder.Services.AddScoped<RedisOrderStore>();
+builder.Services.AddScoped<InMemoryOrderStore>();
+builder.Services.AddScoped<IOrderStore, FallbackOrderStore>();
 builder.Services.AddScoped<OrderService>();
+
+// Add health checks
+builder.Services.AddHealthChecks()
+    .AddCheck<RedisHealthCheck>("redis");
 
 // Add CORS - moved outside the development check
 builder.Services.AddCors(options =>
@@ -63,6 +99,9 @@ app.UseRouting();
 // Map API controllers BEFORE the fallback
 app.MapControllers();
 app.MapHub<OrderHub>("/orderhub");
+
+// Add health check endpoint
+app.MapHealthChecks("/health");
 
 // Map fallback to file LAST - this catches everything that wasn't handled above
 app.MapFallbackToFile("index.html");

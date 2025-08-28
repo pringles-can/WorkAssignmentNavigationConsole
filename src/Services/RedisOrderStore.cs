@@ -18,46 +18,67 @@ public class RedisOrderStore : IOrderStore
 
     public async Task<Order> CreateAsync()
     {
-        var order = new Order();
-        var key = $"{OrderKeyPrefix}{order.Id}";
-        var json = JsonSerializer.Serialize(order);
-        
-        await _cache.SetStringAsync(key, json, new DistributedCacheEntryOptions
+        try
         {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24) // Orders expire after 24 hours
-        });
-        
-        return order;
+            var order = new Order();
+            var key = $"{OrderKeyPrefix}{order.Id}";
+            var json = JsonSerializer.Serialize(order);
+            
+            await _cache.SetStringAsync(key, json, new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24) // Orders expire after 24 hours
+            });
+            
+            return order;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Failed to create order in Redis: {ex.Message}", ex);
+        }
     }
 
     public async Task<Order?> GetAsync(Guid id)
     {
-        var key = $"{OrderKeyPrefix}{id}";
-        var json = await _cache.GetStringAsync(key);
-        
-        if (string.IsNullOrEmpty(json))
-            return null;
+        try
+        {
+            var key = $"{OrderKeyPrefix}{id}";
+            var json = await _cache.GetStringAsync(key);
             
-        return JsonSerializer.Deserialize<Order>(json);
+            if (string.IsNullOrEmpty(json))
+                return null;
+                
+            return JsonSerializer.Deserialize<Order>(json);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Failed to get order {id} from Redis: {ex.Message}", ex);
+        }
     }
 
     public async Task<Order?> UpdateStageAsync(Guid id, OrderStage stage)
     {
-        var order = await GetAsync(id);
-        if (order == null)
-            return null;
-            
-        order.Stage = stage;
-        order.UpdatedAtUtc = DateTimeOffset.UtcNow;
-        
-        var key = $"{OrderKeyPrefix}{id}";
-        var json = JsonSerializer.Serialize(order);
-        
-        await _cache.SetStringAsync(key, json, new DistributedCacheEntryOptions
+        try
         {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24)
-        });
-        
-        return order;
+            var order = await GetAsync(id);
+            if (order == null)
+                return null;
+                
+            order.Stage = stage;
+            order.UpdatedAtUtc = DateTimeOffset.UtcNow;
+            
+            var key = $"{OrderKeyPrefix}{id}";
+            var json = JsonSerializer.Serialize(order);
+            
+            await _cache.SetStringAsync(key, json, new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24)
+            });
+            
+            return order;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Failed to update order {id} stage in Redis: {ex.Message}", ex);
+        }
     }
 }

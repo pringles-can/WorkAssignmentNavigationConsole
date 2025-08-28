@@ -18,37 +18,65 @@ public class OrdersController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateOrder()
     {
-        var order = await _orderService.CreateOrderAsync();
-        return CreatedAtAction(nameof(GetOrder), new { id = order.Id }, order);
+        try
+        {
+            var order = await _orderService.CreateOrderAsync();
+            return CreatedAtAction(nameof(GetOrder), new { id = order.Id }, order);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "Failed to create order", details = ex.Message });
+        }
     }
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetOrder(Guid id)
     {
-        var order = await _orderService.GetOrderAsync(id);
-        if (order == null)
-            return NotFound();
-            
-        return Ok(order);
+        try
+        {
+            var order = await _orderService.GetOrderAsync(id);
+            if (order == null)
+                return NotFound();
+                
+            return Ok(order);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "Failed to retrieve order", details = ex.Message });
+        }
     }
 
     [HttpPut("{id:guid}/stage")]
     public async Task<IActionResult> UpdateStage(Guid id, [FromBody] OrderStage stage)
     {
-        var order = await _orderService.UpdateOrderStageAsync(id, stage);
-        if (order == null)
-            return NotFound();
-            
-        return Ok(order);
+        try
+        {
+            var order = await _orderService.UpdateOrderStageAsync(id, stage);
+            if (order == null)
+                return NotFound();
+                
+            return Ok(order);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "Failed to update order stage", details = ex.Message });
+        }
     }
 
     [HttpPost("{id:guid}/advance")]
     public async Task<IActionResult> AdvanceStage(Guid id)
     {
-        var order = await _orderService.AdvanceOrderStageAsync(id);
-        if (order == null)
-            return NotFound();
-            
-        return Ok(order);
+        try
+        {
+            var order = await _orderService.AdvanceOrderStageAsync(id);
+            if (order == null)
+                return NotFound();
+                
+            return Ok(order);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "Failed to advance order stage", details = ex.Message });
+        }
     }
 }
