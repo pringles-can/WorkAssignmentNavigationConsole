@@ -16,10 +16,14 @@ builder.Services.AddSignalR();
 // Configure Redis
 builder.Services.AddStackExchangeRedisCache(options =>
 {
-    var redisConnectionString = builder.Configuration.GetConnectionString("Redis") 
-        ?? builder.Configuration["Redis:ConnectionString"] 
+    var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
         ?? builder.Configuration["RedisConnectionString"]  // Alternative name without colon
         ?? "localhost:6379";
+    
+    // Debug logging to help diagnose configuration issues
+    Console.WriteLine($"DEBUG: GetConnectionString('Redis') = {builder.Configuration.GetConnectionString("Redis")}");
+    Console.WriteLine($"DEBUG: Configuration['RedisConnectionString'] = {builder.Configuration["RedisConnectionString"]}");
+    Console.WriteLine($"DEBUG: Final Redis connection string = {redisConnectionString}");
     
     // For Azure Redis Cache, ensure proper connection settings
     if (redisConnectionString.Contains("ssl=True") || redisConnectionString.Contains("ssl=true"))
