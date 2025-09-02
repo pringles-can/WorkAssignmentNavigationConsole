@@ -14,9 +14,8 @@ public class RedisHealthCheck : IHealthCheck
         CancellationToken cancellationToken = default)
     {
         var conn = _config.GetConnectionString("Redis") 
-            ?? _config["Redis:ConnectionString"] 
-            ?? _config["RedisConnectionString"]  // Alternative name without colon
-            ?? _config["Redis:Connection"];
+            ?? _config["RedisConnectionString"];
+            
         if (string.IsNullOrWhiteSpace(conn))
             return HealthCheckResult.Healthy("No Redis configured; skipping");
         try

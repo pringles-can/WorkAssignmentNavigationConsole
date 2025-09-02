@@ -118,7 +118,7 @@ if ($LASTEXITCODE -eq 0) {
     
     # Configure App Service with connection strings
     $appSettings = @{
-        "Redis:ConnectionString" = $redisConnectionString
+        "RedisConnectionString" = $redisConnectionString
     }
     
     if ($outputs.signalRName.value) {
