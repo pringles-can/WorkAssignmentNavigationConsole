@@ -15,11 +15,7 @@ public class RedisHealthCheck : IHealthCheck
     {
         var conn = _config.GetConnectionString("Redis") 
             ?? _config["RedisConnectionString"];
-        
-        // Debug logging
-        Console.WriteLine($"DEBUG HealthCheck: GetConnectionString('Redis') = {_config.GetConnectionString("Redis")}");
-        Console.WriteLine($"DEBUG HealthCheck: Configuration['RedisConnectionString'] = {_config["RedisConnectionString"]}");
-        Console.WriteLine($"DEBUG HealthCheck: Final connection string = {conn}");
+
             
         if (string.IsNullOrWhiteSpace(conn))
             return HealthCheckResult.Healthy("No Redis configured; skipping");
