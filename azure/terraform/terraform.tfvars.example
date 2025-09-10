@@ -1,0 +1,23 @@
+# Example Terraform variables file
+# Copy this file to terraform.tfvars and customize the values
+
+# Resource Group Configuration
+resource_group_name = "wanc-tracker-dev"
+location           = "East US"
+environment        = "dev"
+
+# App Service Configuration
+app_service_plan_sku = "B1"  # Options: F1, B1, B2, B3, S1, S2, S3, P1, P2, P3, P1V2, P2V2, P3V2, P1V3, P2V3, P3V3
+
+# Redis Cache Configuration
+redis_cache_sku     = "Basic"  # Options: Basic, Standard, Premium
+redis_cache_family  = "C"      # Options: C (for Basic/Standard), P (for Premium)
+redis_cache_capacity = 0       # Options: 0-6 (varies by SKU)
+
+# Azure SignalR Service Configuration
+signalr_sku         = "Free_F1"  # Options: Free_F1, Standard_S1
+signalr_capacity    = 1          # Options: 1-100 (for Standard_S1)
+deploy_signalr      = true
+
+# Container Registry Configuration
+deploy_container_registry = true
